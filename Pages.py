@@ -14,9 +14,18 @@ def Home_page():
         st.write("Success isn't always about greatness. It's about consistency. Consistent hard work gains success. Greatness will come.")
     with col2:
         st.image(image1)
+    
+    products = Product.fetch_products()
+    sponsored_products = [p for p in products if User.check_owner_acc(p[8])]
+    regular_products = [p for p in products if not User.check_owner_acc(p[8])]
+    
+    st.subheader("Sponsored Products")
+    display_products(sponsored_products[:4])
 
     st.subheader("Products")
-    products = Product.fetch_products()
+    display_products(regular_products[:4])
+    
+def display_products(products):
     cols = st.columns(4)  
     for i, product in enumerate(products[:4]):  # Display up to 4 products
         with cols[i % 4]:  
@@ -26,12 +35,13 @@ def Home_page():
             else:
                 st.write("No image available")
             
-            st.subheader(product[5])  # Assuming the 6th item is the product name
-            st.write(f"Rs. {product[6]}")  # Assuming the 7th item is the price
+            st.markdown(f"##### {product[5]}")
+            st.write(f"Seller: {product[8]}")
+            st.write(f"Rs. {product[6]}")
             if st.button("Details", key=f"details_{i}"):
-                    st.session_state.selected_product = product
-                    st.session_state.page = 'Product Details'
-                    st.rerun()
+                st.session_state.selected_product = product
+                st.session_state.page = 'Product Details'
+                st.rerun()
 
 def All_products_page():
     st.title("All Products")
@@ -42,22 +52,7 @@ def All_products_page():
     products = Product.fetch_products()
 
     if products:
-        cols = st.columns(4)  
-        for i, product in enumerate(products[:4]):  # Display up to 4 products
-            with cols[i % 4]:  
-                if product[0]: 
-                    image = Image.open(io.BytesIO(product[0]))
-                    st.image(image, use_column_width=True)
-                else:
-                    st.write("No image available")
-                
-                st.subheader(product[5])
-                st.write(f"Rs. {product[6]}")
-                if st.button("Details", key=f"details_{i}"):
-                    st.session_state.selected_product = product
-                    st.session_state.page = 'Product Details'
-                    st.rerun()
-
+        display_products(products)
     else:
         # If there are no products, display a message
         st.write("No products available at the moment.")
@@ -67,6 +62,10 @@ def Product_details_page():
     if 'selected_product' in st.session_state:
         product = st.session_state.selected_product
         
+        if st.button("← Back"):
+            st.session_state['page'] = 'Products'
+            st.rerun()
+    
         image_container = st.container()
         with image_container:
             cols = st.columns(5)
@@ -78,13 +77,37 @@ def Product_details_page():
                         st.image(resized_image, use_column_width=True)
                 else:
                     with cols[i]:
-                        st.write("No image")
+                        st.write("")
         
-        # Display other product details
-        st.write(f"**{product[5]}**")  # Product name
-        st.write(f"Price: {product[6]}")  # Product price
+        # Display product details
+        st.subheader(product[5])  # Product name
+        st.write(f"Price: Rs. {product[6]}")  # Product price
         st.write(f"Description: {product[7]}")  # Product description
-        st.write(f"Contact: {product[8]}")  # Product contact info
+
+        seller_username = product[8]  # Assuming the 9th item is the seller's username
+        seller_email = product[9]  # Assuming the 10th item is the seller's email
+
+        seller_details = User.fetch_user_details(seller_username)
+        st.subheader("About the Seller")
+        if seller_details:
+            if seller_details['profile_pic']:
+                profile_image = Image.open(io.BytesIO(seller_details['profile_pic']))
+                resized_image = profile_image.resize((100, 100))
+                st.image(resized_image, use_column_width=False)
+            else:
+                st.write("No profile picture available.")
+            
+            st.write(f"**Name:** {seller_username}")
+            st.write(f"**Email:** {seller_email}")
+            st.write(f"**Phone:** {seller_details['phone']}")
+            
+            if seller_details['bio']:
+                st.write("**Biography:** "  + seller_details['bio'])
+            else:
+                st.write("Not provided.")
+        else:
+            st.write("Seller information not available.")
+
     else:
         st.write("No product selected.")
 
@@ -94,8 +117,8 @@ def About_page():
 
 def Account_page():
     # Check if the user is logged in and show the profile page if true
-    if st.session_state.get("logged_in"):
-        show_profile_page(st.session_state.username)
+    if User.get_signed_in_acc():
+        show_profile_page(User.get_signed_in_acc())
     else:
         # Otherwise, show the login and registration tabs
         st.title("Sign in | Sign up")
@@ -109,8 +132,6 @@ def Account_page():
             if st.button("Login"):
                 if User.sign_in(login_username, login_password):
                     st.success("Logged in successfully")
-                    st.session_state.logged_in = True
-                    st.session_state.username = login_username
                     st.rerun()  # This refreshes the page to switch to the profile view
                 else:
                     st.error("Login failed. Check your credentials.")
@@ -192,12 +213,9 @@ def show_profile_page(username):
             st.session_state["page"] = "Change Password"
             st.rerun()
         if st.button("Log Out"):
-            st.session_state['logged_in'] = False
-            st.session_state['username'] = None
-            st.success("You have been signed out.")
+            User.sign_out()
             st.rerun()  
-        
-
+    
     else:
         st.error("Failed to fetch profile details.")
 
@@ -222,7 +240,7 @@ def Add_Product_page():
             # Convert uploaded files to PIL images
             images = [Image.open(image) if image else None for image in product_images]
             
-            Product.add_product(images, product_name, product_price, product_description, st.session_state.username, User.get_email(st.session_state.username))
+            Product.add_product(images, product_name, product_price, product_description, User.get_signed_in_acc(), User.get_email(User.get_signed_in_acc()))
             st.success("Product added successfully!")
         else:
             st.error("Please fill in all required fields.")
@@ -268,7 +286,7 @@ def Change_password_page():
     confirm_new_password = st.text_input("Confirm New Password", type="password")
     if st.button("Change Password"):
         if new_password == confirm_new_password:
-            result = User.change_pas(st.session_state.username, current_password, new_password)
+            result = User.change_pas(User.get_signed_in_acc(), current_password, new_password)
             if result[0] == "Password Changed":
                 st.success(result[1])
             else:

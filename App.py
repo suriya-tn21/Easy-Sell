@@ -1,5 +1,6 @@
 import streamlit as st
 from PIL import Image
+from User import get_signed_in_acc, sign_out
 import Pages
 
 def change_page(page):
@@ -11,8 +12,6 @@ if 'selected_product' not in st.session_state:
     st.session_state.selected_product = None
 if 'search_query' not in st.session_state:
     st.session_state.search_query = ""
-if 'logged_in' not in st.session_state:
-    st.session_state['logged_in'] = False  
 
 st.set_page_config(layout = "wide")
 logo = Image.open("Images/easy-shop.png")
@@ -28,14 +27,12 @@ with col3:
 with col4:
     st.button("Account", on_click = change_page, args = ('Account',))
 
-if st.session_state['logged_in']:
+if get_signed_in_acc():
     with col5:
         st.button("➕", on_click=change_page, args=('Add Product',))
     with col6:
         if st.button("Sign Out"):
-            st.session_state['logged_in'] = False
-            st.session_state['username'] = None
-            st.success("You have been signed out.")
+            sign_out()
             st.rerun()  # Refresh the page to reflect the logged-out state
 
 else:

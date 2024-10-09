@@ -2,7 +2,6 @@ import sqlite3 as sql
 import random
 import os
 import json
-import io
 import datetime as dt
 
 db = sql.connect('Databases\\User Database.db')           # Connecting to Database
@@ -24,6 +23,31 @@ cursor.execute('''
 cursor.close()          # Closing cursor
 db.close()              # Closing Database
 
+def get_signed_in_acc():
+    try:
+        with open("Signed In.txt","r") as f:
+            return f.read().strip()
+    except:
+        return False
+
+def sign_out():
+    os.remove("Signed In.txt")
+
+def check_owner_acc(usr):
+    db = sql.connect('Databases\\User Database.db')           # Connecting to Database
+    cursor = db.cursor()                                  # Making Cursor
+
+    cursor.execute("SELECT Email FROM users WHERE username=?",(usr,))
+    result = cursor.fetchone()
+
+    cursor.close()          # Closing cursor
+    db.close()              # Closing Database
+
+    if result or result[0].endswith("@easyshop.com"):
+        return True
+    else:
+        return False
+    
 def sign_up(usr, pas, email, phone, dob, profile_pic, bio):
     if usr and pas and len(pas) >= 8:
         db = sql.connect('Databases\\User Database.db')
@@ -69,6 +93,8 @@ def sign_in(usr,pas):
     db.close()              # Closing Database
 
     if result:
+        with open("Signed In.txt","w") as f:
+            f.write(usr)
         return True
 
 def fetch_user_details(username):
