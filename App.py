@@ -58,4 +58,5 @@ elif st.session_state['page'] == 'Edit Profile':
     Pages.Edit_Profile_page()
 elif st.session_state['page'] == 'Product Details':
     Pages.Product_details_page()
-
+elif st.session_state['page'] == 'Change Password':
+    Pages.Change_password_page()

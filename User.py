@@ -16,7 +16,8 @@ cursor.execute('''
         Phone TEXT, 
         DOB DATE, 
         ProfilePic BLOB, 
-        Bio TEXT
+        Bio TEXT,
+        Recoverykey TEXT
     )
 ''')
 
@@ -30,10 +31,11 @@ def sign_up(usr, pas, email, phone, dob, profile_pic, bio):
         
         try:
             profile_pic_data = profile_pic.read() if profile_pic else None
+            key = generate_recovery_key()
             cursor.execute('''
-                INSERT INTO users (Username, Password, Email, Phone, DOB, ProfilePic, Bio) 
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', (usr, pas, email, phone, dob, profile_pic_data, bio))
+                INSERT INTO users (Username, Password, Email, Phone, DOB, ProfilePic, Bio, Recoverykey) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (usr, pas, email, phone, dob, profile_pic_data, bio, key))
             
             db.commit()
             cursor.close()
@@ -43,7 +45,7 @@ def sign_up(usr, pas, email, phone, dob, profile_pic, bio):
             if not os.path.exists(path):
                 os.makedirs(path)
 
-            return "Account Created Successfully"
+            return f"Account Created Successfully. Your recovery key is: {key}"
         except sql.IntegrityError:
             cursor.close()
             db.close()
@@ -68,7 +70,6 @@ def sign_in(usr,pas):
 
     if result:
         return True
-
 
 def fetch_user_details(username):
     db = sql.connect('Databases\\User Database.db')
@@ -130,7 +131,25 @@ def change_pas(usr,oldpas,newpas):
         return ("Change Password Failed", "Invalid username or old password")
  
 def reset_pas(usr,key,npas):
-    pass
+    db = sql.connect('Databases\\User Database.db')
+    cursor = db.cursor()
+
+    try:
+        cursor.execute("SELECT Recoverykey FROM users WHERE Username = ?", (usr,))
+        stored_key = cursor.fetchone()
+
+        if stored_key or stored_key[0] == key:
+            cursor.execute("UPDATE users SET Password = ? WHERE Username = ?", (npas, usr))
+            db.commit()
+            log("Password Reset", usr)
+            return "Password reset successful"
+        else:
+            return "Invalid recovery key"
+    except Exception as e:
+        return f"An error occurred: {str(e)}"
+    finally:
+        cursor.close()
+        db.close()
 
 def log(action, username, details=None):
     timestamp = dt.datetime.now().isoformat()

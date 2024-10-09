@@ -122,19 +122,40 @@ def Account_page():
             reg_confirm_password = st.text_input("Confirm Password", type="password", key="reg_confirm_password")
             reg_email = st.text_input("Email", key="reg_email")
             reg_phone = st.text_input("Phone Number", key="reg_phone")
-            reg_dob = st.date_input("Date of Birth", key="reg_dob")
+            reg_dob = st.date_input("Date of Birth", key="reg_dob", min_value = datetime.date(1970, 1, 1), max_value=datetime.date(2200, 12, 31))
             reg_profile_pic = st.file_uploader("Profile Picture", type=["png", "jpg", "jpeg"], key="reg_profile_pic")
             reg_bio = st.text_area("Biography", key="reg_bio")
 
             if st.button("Sign up"):
                 if reg_password == reg_confirm_password:
                     result = User.sign_up(reg_username, reg_password, reg_email, reg_phone, reg_dob, reg_profile_pic, reg_bio)
-                    st.success(result)
+                    if "Account Created Successfully" in result:
+                        st.success("Account Created Successfully")
+                        recovery_key = result.split("Your recovery key is: ")[1]
+                        st.warning(f"Please save your recovery key: {recovery_key}")
+                        st.info("You can use this key to reset your password if you forget it.")
                 else:
                     st.error("Passwords do not match.")
-
+        
         with reset_tab:
             st.subheader("Reset Password")
+            reset_username = st.text_input("Username", key="reset_username")
+            reset_recovery_key = st.text_input("Recovery Key", key="reset_recovery_key")
+            reset_new_password = st.text_input("New Password", type="password", key="reset_new_password")
+            reset_confirm_password = st.text_input("Confirm New Password", type="password", key="reset_confirm_password")
+
+            if st.button("Reset Password"):
+                if reset_new_password == reset_confirm_password:
+                    if len(reset_new_password) >= 8:
+                        result = User.reset_pas(reset_username, reset_recovery_key, reset_new_password)
+                        if "Password reset successful" in result:
+                            st.success(result)
+                        else:
+                            st.error(result)
+                    else:
+                        st.error("Password must be at least 8 characters long.")
+                else:
+                    st.error("New passwords do not match.")
         
 def show_profile_page(username):
     st.title(f"Welcome, {username}!")
@@ -167,11 +188,15 @@ def show_profile_page(username):
         if st.button("Edit Profile"):
             st.session_state['page'] = 'Edit Profile'
             st.rerun()
+        if st.button("Change Password"):
+            st.session_state["page"] = "Change Password"
+            st.rerun()
         if st.button("Log Out"):
             st.session_state['logged_in'] = False
             st.session_state['username'] = None
             st.success("You have been signed out.")
             st.rerun()  
+        
 
     else:
         st.error("Failed to fetch profile details.")
@@ -236,3 +261,21 @@ def Edit_Profile_page():
     else:
         st.error("Failed to fetch user details.")
 
+def Change_password_page():
+    st.subheader("Change Password")
+    current_password = st.text_input("Current Password", type="password")
+    new_password = st.text_input("New Password", type="password")
+    confirm_new_password = st.text_input("Confirm New Password", type="password")
+    if st.button("Change Password"):
+        if new_password == confirm_new_password:
+            result = User.change_pas(st.session_state.username, current_password, new_password)
+            if result[0] == "Password Changed":
+                st.success(result[1])
+            else:
+                st.error(result[1])
+        else:
+            st.error("New passwords do not match.")
+    
+    if st.button("Cancel"):
+        st.session_state['page'] = 'Account'
+        st.rerun()
