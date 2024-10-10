@@ -220,7 +220,7 @@ def show_profile_page(username):
         st.error("Failed to fetch profile details.")
 
 def Add_Product_page():
-    if not st.session_state.get('logged_in'):
+    if not User.get_signed_in_acc():
         st.error("You must be logged in to add a product.")
         st.write("Please go to the Account page to sign in or create an account.")
         return
