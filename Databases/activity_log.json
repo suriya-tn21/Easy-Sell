@@ -8,5 +8,10 @@
     "timestamp": "2024-10-09T18:15:30.634562",
     "username": "Suriya",
     "action": "Password Change"
+  },
+  {
+    "timestamp": "2024-10-11T11:13:35.169983",
+    "username": "Adhi",
+    "action": "Account Deletion"
   }
 ]

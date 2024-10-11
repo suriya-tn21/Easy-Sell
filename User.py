@@ -3,6 +3,7 @@ import random
 import os
 import json
 import datetime as dt
+from Product import delete_products_by_username
 
 db = sql.connect('Databases\\User Database.db')           # Connecting to Database
 cursor = db.cursor()                                  # Making Cursor
@@ -23,6 +24,10 @@ cursor.execute('''
 cursor.close()          # Closing cursor
 db.close()              # Closing Database
 
+owner_user = "Owner"
+owner_passsword = "easyshop@0987"
+owner_account = "Owner@easyshop.com"
+
 def get_signed_in_acc():
     try:
         with open("Signed In.txt","r") as f:
@@ -33,49 +38,43 @@ def get_signed_in_acc():
 def sign_out():
     os.remove("Signed In.txt")
 
-def check_owner_acc(usr):
-    db = sql.connect('Databases\\User Database.db')           # Connecting to Database
-    cursor = db.cursor()                                  # Making Cursor
-
-    cursor.execute("SELECT Email FROM users WHERE username=?",(usr,))
-    result = cursor.fetchone()
-
-    cursor.close()          # Closing cursor
-    db.close()              # Closing Database
-
-    if result or result[0].endswith("@easyshop.com"):
+def check_owner_acc():
+    if get_signed_in_acc() == owner_user:
         return True
     else:
         return False
     
 def sign_up(usr, pas, email, phone, dob, profile_pic, bio):
-    if usr and pas and len(pas) >= 8:
-        db = sql.connect('Databases\\User Database.db')
-        cursor = db.cursor()
-        
-        try:
-            profile_pic_data = profile_pic.read() if profile_pic else None
-            key = generate_recovery_key()
-            cursor.execute('''
-                INSERT INTO users (Username, Password, Email, Phone, DOB, ProfilePic, Bio, Recoverykey) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (usr, pas, email, phone, dob, profile_pic_data, bio, key))
+    if usr != owner_user:
+        if usr and pas and len(pas) >= 8:
+            db = sql.connect('Databases\\User Database.db')
+            cursor = db.cursor()
             
-            db.commit()
-            cursor.close()
-            db.close()
-            
-            path = os.path.join('Users', usr)
-            if not os.path.exists(path):
-                os.makedirs(path)
+            try:
+                profile_pic_data = profile_pic.read() if profile_pic else None
+                key = generate_recovery_key()
+                cursor.execute('''
+                    INSERT INTO users (Username, Password, Email, Phone, DOB, ProfilePic, Bio, Recoverykey) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (usr, pas, email, phone, dob, profile_pic_data, bio, key))
+                
+                db.commit()
+                cursor.close()
+                db.close()
+                
+                path = os.path.join('Users', usr)
+                if not os.path.exists(path):
+                    os.makedirs(path)
 
-            return f"Account Created Successfully. Your recovery key is: {key}"
-        except sql.IntegrityError:
-            cursor.close()
-            db.close()
-            return "Account Creation Failed. Username already exists."
+                return f"Account Created Successfully. Your recovery key is: {key}"
+            except sql.IntegrityError:
+                cursor.close()
+                db.close()
+                return "Account Creation Failed. Username already exists."
+        else:
+            return "Invalid input."
     else:
-        return "Invalid input."
+        return "Account Creation Failed. Username already exists."
 
 def generate_recovery_key():
     """Generate a random recovery key of 10 characters (letters and digits)."""
@@ -83,19 +82,24 @@ def generate_recovery_key():
     return ''.join(random.choice(characters) for _ in range(10))
 
 def sign_in(usr,pas):
-    db = sql.connect('Databases\\User Database.db')           # Connecting to Database
-    cursor = db.cursor()                                  # Making Cursor
-
-    cursor.execute("SELECT * FROM users WHERE username=?AND password=?",(usr,pas))
-    result = cursor.fetchone()
-
-    cursor.close()          # Closing cursor
-    db.close()              # Closing Database
-
-    if result:
+    if usr == owner_user and pas == owner_passsword:
         with open("Signed In.txt","w") as f:
             f.write(usr)
         return True
+    else:
+        db = sql.connect('Databases\\User Database.db')           # Connecting to Database
+        cursor = db.cursor()                                  # Making Cursor
+
+        cursor.execute("SELECT * FROM users WHERE username=?AND password=?",(usr,pas))
+        result = cursor.fetchone()
+
+        cursor.close()          # Closing cursor
+        db.close()              # Closing Database
+
+        if result:
+            with open("Signed In.txt","w") as f:
+                f.write(usr)
+            return True
 
 def fetch_user_details(username):
     db = sql.connect('Databases\\User Database.db')
@@ -237,3 +241,35 @@ def get_email(username):
     db.close()              # Closing Database
 
     return result
+
+def fetch_all_users():
+    db = sql.connect('Databases\\User Database.db')
+    cursor = db.cursor()
+    
+    cursor.execute("SELECT Username, Email, Phone, DOB, Bio FROM users")
+    users = cursor.fetchall()
+    
+    cursor.close()
+    db.close()
+    
+    return users
+
+def delete_user_by_username(username):
+    db = sql.connect('Databases\\User Database.db')
+    cursor = db.cursor()
+    
+    try:
+        # Delete user's products
+        deleted_products = delete_products_by_username(username)
+        # Delete user account
+        cursor.execute("DELETE FROM users WHERE Username = ?", (username,))
+        db.commit()
+        
+        log("Account Deletion", username, f"Deleted account and {deleted_products} associated products")
+        return True, deleted_products
+    except Exception as e:
+        print(f"Error deleting user: {e}")
+        return False, 0
+    finally:
+        cursor.close()
+        db.close()

@@ -15,30 +15,37 @@ def Home_page():
     with col2:
         st.image(image1)
     
-    products = Product.fetch_products()
-    sponsored_products = [p for p in products if User.check_owner_acc(p[8])]
-    regular_products = [p for p in products if not User.check_owner_acc(p[8])]
-    
     st.subheader("Sponsored Products")
-    display_products(sponsored_products[:4])
+    sponsored_products = Product.fetch_sponsored_products()
+    if sponsored_products:
+        display_product_list(sponsored_products, "home")
+    else:
+        st.write("No sponsored products available at the moment.")
 
-    st.subheader("Products")
-    display_products(regular_products[:4])
+    st.subheader("All Products")
+    other_products = Product.fetch_other_products()
+    display_product_list(other_products, "home")
     
-def display_products(products):
-    cols = st.columns(4)  
-    for i, product in enumerate(products[:4]):  # Display up to 4 products
-        with cols[i % 4]:  
-            if product[0]: 
-                image = Image.open(io.BytesIO(product[0]))
-                st.image(image, use_column_width=True)
+def display_product_list(products, page):
+    if page == "home":
+        products = products[:4]
+    cols = st.columns(4)
+    for i, product in enumerate(products):
+        with cols[i % 4]:
+            if product[1] and isinstance(product[1], bytes):
+                try:
+                    image = Image.open(io.BytesIO(product[1]))
+                    st.image(image, use_column_width=True)
+                except Exception as e:
+                    st.write(f"Error loading image: {e}")
+                    st.write("No image available")
             else:
                 st.write("No image available")
             
-            st.markdown(f"##### {product[5]}")
-            st.write(f"Seller: {product[8]}")
-            st.write(f"Rs. {product[6]}")
-            if st.button("Details", key=f"details_{i}"):
+            st.markdown(f"##### {product[6]}")
+            st.write(f"Seller: {product[9]}")
+            st.write(f"Rs. {product[7]}")
+            if st.button("Details", key=f"details_{product[0]}"):
                 st.session_state.selected_product = product
                 st.session_state.page = 'Product Details'
                 st.rerun()
@@ -52,11 +59,46 @@ def All_products_page():
     products = Product.fetch_products()
 
     if products:
-        display_products(products)
+        if User.check_owner_acc():
+            for product in products:
+                col1, col2, col3 = st.columns([3, 1, 1])
+                
+                with col1:
+                    st.subheader(product[6])  # Product name
+                    st.write(f"Price: Rs. {product[7]}")
+                    st.write(f"Seller: {product[9]}")
+                    st.write(f"Description: {product[8]}")
+                
+                with col2:
+                    if product[1]:  # Assuming the first image is at index 1
+                        image = Image.open(io.BytesIO(product[1]))
+                        st.image(image, width=100)
+                    else:
+                        st.write("No image available")
+                
+                with col3:
+                    if product[11]:  # Sponsored status
+                        if st.button("Remove Sponsorship", key=f"unsponsored_{product[0]}"):
+                            Product.remove_sponsorship(product[0])
+                            st.success("Product removed from sponsored list")
+                            st.rerun()
+                    else:
+                        if st.button("Make Sponsored", key=f"sponsor_{product[0]}"):
+                            Product.make_sponsored(product[0])
+                            st.success("Product added to sponsored list")
+                            st.rerun()
+                    
+                    if st.button("Delete Product", key=f"delete_{product[0]}"):
+                        Product.delete_product(product[0])
+                        st.success("Product deleted successfully")
+                        st.rerun()
+                
+                st.write("---")
+        else:
+            display_product_list(products, "Products")
     else:
-        # If there are no products, display a message
         st.write("No products available at the moment.")
-
+        
 def Product_details_page():
     st.title("Product Details")
     if 'selected_product' in st.session_state:
@@ -69,7 +111,7 @@ def Product_details_page():
         image_container = st.container()
         with image_container:
             cols = st.columns(5)
-            for i, img_data in enumerate(product[:5]):  # First 5 elements are image data
+            for i, img_data in enumerate(product[1:5]):  # First 5 elements are image data
                 if img_data:
                     image = Image.open(io.BytesIO(img_data))
                     resized_image = Product.resize_image(image)
@@ -148,16 +190,21 @@ def Account_page():
             reg_bio = st.text_area("Biography", key="reg_bio")
 
             if st.button("Sign up"):
-                if reg_password == reg_confirm_password:
-                    result = User.sign_up(reg_username, reg_password, reg_email, reg_phone, reg_dob, reg_profile_pic, reg_bio)
-                    if "Account Created Successfully" in result:
-                        st.success("Account Created Successfully")
-                        recovery_key = result.split("Your recovery key is: ")[1]
-                        st.warning(f"Please save your recovery key: {recovery_key}")
-                        st.info("You can use this key to reset your password if you forget it.")
+                if len(reg_password) >= 8:
+                    if reg_password == reg_confirm_password:
+                        result = User.sign_up(reg_username, reg_password, reg_email, reg_phone, reg_dob, reg_profile_pic, reg_bio)
+                        if "Account Created Successfully" in result:
+                            st.success("Account Created Successfully")
+                            recovery_key = result.split("Your recovery key is: ")[1]
+                            st.warning(f"Please save your recovery key: {recovery_key}")
+                            st.info("You can use this key to reset your password if you forget it.")
+                        else:
+                            st.error("Username Already Exists")
+                    else:
+                        st.error("Passwords do not match.")
                 else:
-                    st.error("Passwords do not match.")
-        
+                    st.error("Passwords Should be More than 8 Characters")
+                 
         with reset_tab:
             st.subheader("Reset Password")
             reset_username = st.text_input("Username", key="reset_username")
@@ -179,46 +226,64 @@ def Account_page():
                     st.error("New passwords do not match.")
         
 def show_profile_page(username):
-    st.title(f"Welcome, {username}!")
-    st.divider()
-    user_details = User.fetch_user_details(username)
-
-    if user_details:
+    if username == User.owner_user:
+        st.title(f"Welcome, {username}!")
+        st.divider()
+        
         col1, col2 = st.columns([1, 3])
 
         with col1:
-            if user_details['profile_pic']:
-                profile_image = Image.open(io.BytesIO(user_details['profile_pic']))
-                resized_image = profile_image.resize((256, 256))
-                st.image(resized_image, use_column_width=True)
-            else:
-                st.write("No profile picture available.")
+            profile_image = Image.open("Images\\Owner Profile.jpg")
+            #resized_image = profile_image.resize((256, 256))
+            st.image(profile_image, use_column_width=True)
         
         with col2:
             st.subheader("Profile Information")
-            st.write(f"**Username:** {user_details['username']}")
-            st.write(f"**Email:** {user_details['email']}")
-            st.write(f"**Phone Number:** {user_details['phone']}")
-            st.write(f"**Date of Birth:** {user_details['dob']}")
+            st.write(f"**Username:** {User.owner_user}")
+            st.write(f"**Email:** {User.owner_account}")
             
-            st.subheader("Biography")
-            st.write(user_details['bio'])
 
+    else:    
+        st.title(f"Welcome, {username}!")
         st.divider()
-        st.subheader("Account Actions")
-        if st.button("Edit Profile"):
-            st.session_state['page'] = 'Edit Profile'
-            st.rerun()
-        if st.button("Change Password"):
-            st.session_state["page"] = "Change Password"
-            st.rerun()
-        if st.button("Log Out"):
-            User.sign_out()
-            st.rerun()  
-    
-    else:
-        st.error("Failed to fetch profile details.")
+        user_details = User.fetch_user_details(username)
 
+        if user_details:
+            col1, col2 = st.columns([1, 3])
+
+            with col1:
+                if user_details['profile_pic']:
+                    profile_image = Image.open(io.BytesIO(user_details['profile_pic']))
+                    resized_image = profile_image.resize((256, 256))
+                    st.image(resized_image, use_column_width=True)
+                else:
+                    st.write("No profile picture available.")
+            
+            with col2:
+                st.subheader("Profile Information")
+                st.write(f"**Username:** {user_details['username']}")
+                st.write(f"**Email:** {user_details['email']}")
+                st.write(f"**Phone Number:** {user_details['phone']}")
+                st.write(f"**Date of Birth:** {user_details['dob']}")
+                
+                st.subheader("Biography")
+                st.write(user_details['bio'])
+
+            st.divider()
+            st.subheader("Account Actions")
+            if st.button("Edit Profile"):
+                st.session_state['page'] = 'Edit Profile'
+                st.rerun()
+            if st.button("Change Password"):
+                st.session_state["page"] = "Change Password"
+                st.rerun()
+            if st.button("Log Out"):
+                User.sign_out()
+                st.rerun()  
+
+        else:
+            st.error("Failed to fetch profile details.")
+      
 def Add_Product_page():
     if not User.get_signed_in_acc():
         st.error("You must be logged in to add a product.")
@@ -297,3 +362,41 @@ def Change_password_page():
     if st.button("Cancel"):
         st.session_state['page'] = 'Account'
         st.rerun()
+
+def All_account_page():
+    st.title("All User Accounts")
+    
+    if not User.check_owner_acc():
+        st.error("You don't have permission to view this page.")
+        return
+    
+    users = User.fetch_all_users()
+    
+    if not users:
+        st.warning("No user accounts found.")
+        return
+    
+    for user in users:
+        username, email, phone, dob, bio = user
+        
+        st.subheader(f"User: {username}")
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.write(f"**Email:** {email}")
+            st.write(f"**Phone:** {phone}")
+            st.write(f"**Date of Birth:** {dob}")
+        
+        with col2:
+            st.write("**Biography:**")
+            st.write(bio if bio else "No biography provided.")
+        
+        st.divider()
+
+        with col3:
+            if st.button("Delete Account", key=f"delete_{username}"):
+                if User.delete_user_by_username(username):
+                    st.success(f"Account {username} has been deleted.")
+                    st.rerun()
+                else:
+                    st.error(f"Failed to delete account {username}.")
