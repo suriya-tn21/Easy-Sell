@@ -14,7 +14,7 @@ if 'search_query' not in st.session_state:
     st.session_state.search_query = ""
 
 st.set_page_config(layout = "wide")
-logo = Image.open("Images\easyselllogo.jpeg")
+logo = Image.open("Images//easyselllogo.jpeg")
 st.image(logo, width = 125)
 
 col1, col2, col3, col4, col5, col6 = st.columns([1, 1, 1, 1, 1, 1])
