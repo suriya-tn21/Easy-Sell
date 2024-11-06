@@ -25,8 +25,8 @@ cursor.close()          # Closing cursor
 db.close()              # Closing Database
 
 owner_user = "Owner"
-owner_passsword = "easyshop@0987"
-owner_account = "Owner@easyshop.com"
+owner_passsword = "easysell@0987"
+owner_account = "Owner@easysell.com"
 
 def get_signed_in_acc():
     try:
@@ -61,10 +61,6 @@ def sign_up(usr, pas, email, phone, dob, profile_pic, bio):
                 db.commit()
                 cursor.close()
                 db.close()
-                
-                path = os.path.join('Users', usr)
-                if not os.path.exists(path):
-                    os.makedirs(path)
 
                 return f"Account Created Successfully. Your recovery key is: {key}"
             except sql.IntegrityError:
@@ -208,12 +204,11 @@ def update_profile(username, email, phone, dob, profile_pic, bio):
     conn = sql.connect('Databases\\User Database.db')
     c = conn.cursor()
     
-    # Convert the profile picture to binary format
-    if profile_pic is not None:
-        profile_pic_data = profile_pic.read()
     dob_str = dob.strftime('%Y-%m-%d') if dob else None
-
-    if profile_pic_data:
+        
+    # Convert the profile picture to binary format
+    if profile_pic:
+        profile_pic_data = profile_pic.read()
         c.execute('''
             UPDATE users 
             SET Email = ?, Phone = ?, DOB = ?, ProfilePic = ?, Bio = ?

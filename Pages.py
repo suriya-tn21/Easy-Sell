@@ -52,11 +52,13 @@ def display_product_list(products, page):
 
 def All_products_page():
     st.title("All Products")
-    st.session_state.search_query = st.text_input("Search for products", value=st.session_state.search_query)
-    sort_option = st.selectbox("Sort by", ("Default Sorting", "Sort by price", "Sort by popularity", "Sort by rating", "Sort by sale"))
+    search_query = st.text_input("Search for products", value=st.session_state.get('search_query', ''))
     
     st.write("---")
     products = Product.fetch_products()
+    
+    if search_query:
+        products = [product for product in products if search_query.lower() in product[6].lower()]  # Assuming product name is at index 6
 
     if products:
         if User.check_owner_acc():
@@ -122,12 +124,12 @@ def Product_details_page():
                         st.write("")
         
         # Display product details
-        st.subheader(product[5])  # Product name
-        st.write(f"Price: Rs. {product[6]}")  # Product price
-        st.write(f"Description: {product[7]}")  # Product description
+        st.subheader(product[6])  # Product name
+        st.write(f"Price: Rs. {product[7]}")  # Product price
+        st.write(f"Description: {product[8]}")  # Product description
 
-        seller_username = product[8]  # Assuming the 9th item is the seller's username
-        seller_email = product[9]  # Assuming the 10th item is the seller's email
+        seller_username = product[9]  # Assuming the 9th item is the seller's username
+        seller_email = product[10]  # Assuming the 10th item is the seller's email
 
         seller_details = User.fetch_user_details(seller_username)
         st.subheader("About the Seller")
@@ -155,10 +157,40 @@ def Product_details_page():
 
 def About_page():
     st.title("About Us")
-    st.write("Easy Shop is your one-stop destination for a wide range of products.")
+    st.subheader("Welcome to EasySell!")
+    st.markdown("""At EasySell, we aim to revolutionize the way individuals and small businesses advertise their products online. Established in 2020, our platform was built with a singular vision: to create a space where sellers can effortlessly connect with potential buyers without the constraints of traditional advertising costs. Whether you are a small business owner, an individual entrepreneur, or someone looking to sell products casually, EasySell offers you a hassle-free and cost-effective way to showcase your items to a broader audience.""")
 
+    st.subheader("Why Easysell?")
+    st.markdown("Our platform is designed with simplicity and accessibility at its core. We believe that anyone, regardless of their technical expertise or budget, should have the ability to sell products online with ease. By offering a completely free product listing service, we empower our users to take control of their selling process. Additionally, for those looking to gain even more visibility, EasySell provides affordable sponsorship options, allowing products to be featured prominently on our homepage and search results. This ensures that every seller, from a hobbyist to a full-fledged business, has the opportunity to succeed in the digital marketplace. Our commitment to user experience is what sets us apart. From the streamlined product listing process to our responsive mobile app, we are constantly evolving to meet the needs of our growing community. Whether you're selling locally or reaching out to a global audience, EasySell offers the tools and resources necessary to maximize your reach.")
+
+
+    st.subheader("Our Milestones")
+    milestones = ['''
+
+2021: EasySell was founded with the vision of providing a free, user-friendly platform for product advertisements. Our mission was simple: to eliminate the high costs of advertising and create a more inclusive marketplace.
+
+2022: We achieved our first major milestone of reaching 5,000 registered users and introduced Sponsored Listings, allowing sellers to enhance their product visibility by featuring them at the top of searches and on the homepage. This feature has helped countless businesses increase their sales and build brand recognition.
+
+2023: We expanded further by launching our EasySell Mobile App, making it easier than ever for users to manage their listings and stay connected with buyers, all from the convenience of their smartphones.
+
+2024: Today, we are proud to have over 50,000 products listed on our platform, a testament to the trust and success our users have experienced. We continue to grow as a go-to marketplace for product advertisements.''']
+
+    for milestone in milestones:
+       st.write(f"- {milestone}")
+
+
+    st.subheader("Trust and Reliability")
+    st.markdown("""At EasySell, we understand that trust is paramount when it comes to online transactions. That’s why we’ve implemented comprehensive security measures to safeguard our users’ data and ensure that all transactions are conducted securely. Our platform is equipped with encryption and data protection protocols, providing peace of mind to both sellers and buyers.
+
+To further support our community, we offer a dedicated customer support team that is always available to assist with any inquiries, technical issues, or concerns. Whether you need help with setting up your store, managing your listings, or understanding the sponsorship options, our team is here to ensure that your experience with EasySell is smooth and positive.""")
+    
+    st.subheader('''Looking Ahead''')
+    st.markdown(""" We are continuously working to improve our platform, adding new features and expanding our reach. As the digital marketplace continues to evolve, so does EasySell. Our goal is to remain at the forefront of online advertising, offering innovative solutions that cater to the needs of all our users.
+
+Join the EasySell community today and experience the freedom of advertising your products without the limitations of cost. Whether you're selling handcrafted items, digital goods, or physical products, EasySell is here to help you succeed.""")
+    
+    
 def Account_page():
-    # Check if the user is logged in and show the profile page if true
     if User.get_signed_in_acc():
         show_profile_page(User.get_signed_in_acc())
     else:
@@ -185,17 +217,23 @@ def Account_page():
             reg_confirm_password = st.text_input("Confirm Password", type="password", key="reg_confirm_password")
             reg_email = st.text_input("Email", key="reg_email")
             reg_phone = st.text_input("Phone Number", key="reg_phone")
-            reg_dob = st.date_input("Date of Birth", key="reg_dob", min_value = datetime.date(1970, 1, 1), max_value=datetime.date(2200, 12, 31))
+            reg_dob = st.date_input("Date of Birth", key="reg_dob", min_value=datetime.date(1970, 1, 1), max_value=datetime.date(2200, 12, 31))
             reg_profile_pic = st.file_uploader("Profile Picture", type=["png", "jpg", "jpeg"], key="reg_profile_pic")
             reg_bio = st.text_area("Biography", key="reg_bio")
+
+            if 'registration_success' not in st.session_state:
+                st.session_state.registration_success = False
 
             if st.button("Sign up"):
                 if len(reg_password) >= 8:
                     if reg_password == reg_confirm_password:
                         result = User.sign_up(reg_username, reg_password, reg_email, reg_phone, reg_dob, reg_profile_pic, reg_bio)
                         if "Account Created Successfully" in result:
-                            st.success("Account Created Successfully")
+                            st.session_state.registration_success = True
+                            st.session_state.new_username = reg_username
+                            st.session_state.new_password = reg_password
                             recovery_key = result.split("Your recovery key is: ")[1]
+                            st.success("Account Created Successfully")
                             st.warning(f"Please save your recovery key: {recovery_key}")
                             st.info("You can use this key to reset your password if you forget it.")
                         else:
@@ -204,7 +242,18 @@ def Account_page():
                         st.error("Passwords do not match.")
                 else:
                     st.error("Passwords Should be More than 8 Characters")
-                 
+
+            if st.session_state.registration_success:
+                if st.button("Continue with easyshop"):
+                    if User.sign_in(st.session_state.new_username, st.session_state.new_password):
+                        st.success("Logged in successfully")
+                        st.session_state.registration_success = False
+                        del st.session_state.new_username
+                        del st.session_state.new_password
+                        st.rerun()
+                    else:
+                        st.error("Auto-login failed. Please try logging in manually.")
+
         with reset_tab:
             st.subheader("Reset Password")
             reset_username = st.text_input("Username", key="reset_username")
@@ -233,7 +282,7 @@ def show_profile_page(username):
         col1, col2 = st.columns([1, 3])
 
         with col1:
-            profile_image = Image.open("Images\\Owner Profile.jpg")
+            profile_image = Image.open("H:\Easysell\Images\easyselllogo.jpeg")
             #resized_image = profile_image.resize((256, 256))
             st.image(profile_image, use_column_width=True)
         
@@ -311,7 +360,7 @@ def Add_Product_page():
             st.error("Please fill in all required fields.")
 
 def Edit_Profile_page():
-    username = st.session_state.get('username')    
+    username = User.get_signed_in_acc()
     user_details = User.fetch_user_details(username)
     
     if user_details:

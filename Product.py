@@ -106,6 +106,7 @@ def fetch_products():
     conn = sqlite3.connect('Databases\\Product.db')
     c = conn.cursor()
     c.execute("SELECT id, image1, image2, image3, image4, image5, name, price, description, username, email, sponsored FROM products")
+    print("*you can even add link to navigate the customer to buy the product")
     products = c.fetchall()
     conn.close()
     return products

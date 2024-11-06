@@ -13,5 +13,55 @@
     "timestamp": "2024-10-11T11:13:35.169983",
     "username": "Adhi",
     "action": "Account Deletion"
+  },
+  {
+    "timestamp": "2024-10-12T14:49:44.840376",
+    "username": "v ltd",
+    "action": "Password Change"
+  },
+  {
+    "timestamp": "2024-10-12T14:51:05.634957",
+    "username": "v ltd",
+    "action": "Password Change"
+  },
+  {
+    "timestamp": "2024-10-16T11:39:05.514695",
+    "username": "gfdn",
+    "action": "Password Change"
+  },
+  {
+    "timestamp": "2024-10-16T11:41:51.915603",
+    "username": "gfdn",
+    "action": "Account Deletion",
+    "details": "Deleted account and 1 associated products"
+  },
+  {
+    "timestamp": "2024-10-16T11:44:36.289814",
+    "username": "xcv",
+    "action": "Password Reset"
+  },
+  {
+    "timestamp": "2024-10-23T00:31:20.159390",
+    "username": "ergherhdh",
+    "action": "Account Deletion",
+    "details": "Deleted account and 0 associated products"
+  },
+  {
+    "timestamp": "2024-10-23T00:37:35.714882",
+    "username": "Suriya",
+    "action": "Account Deletion",
+    "details": "Deleted account and 0 associated products"
+  },
+  {
+    "timestamp": "2024-10-23T00:37:38.703461",
+    "username": "Ashish",
+    "action": "Account Deletion",
+    "details": "Deleted account and 0 associated products"
+  },
+  {
+    "timestamp": "2024-10-23T00:37:49.742505",
+    "username": "Praveen",
+    "action": "Account Deletion",
+    "details": "Deleted account and 0 associated products"
   }
 ]
