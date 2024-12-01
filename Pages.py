@@ -282,7 +282,7 @@ def show_profile_page(username):
         col1, col2 = st.columns([1, 3])
 
         with col1:
-            profile_image = Image.open("H:\Easysell\Images\easyselllogo.jpeg")
+            profile_image = Image.open("Images\easyselllogo.jpeg")
             #resized_image = profile_image.resize((256, 256))
             st.image(profile_image, use_column_width=True)
         
